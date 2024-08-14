@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import DeclarativeMeta
 from alembic import context
 from sqlalchemy.orm import sessionmaker
-from models import Base  # Import your models here
+from models.models import Base  # Import your models here
 
 # این آبجکت Config از فایل .ini Alembic برای دسترسی به مقادیر موجود است
 config = context.config
