@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from ..auth_jwt import *
-from ..models import models as models
-from ..schemas import schemas as schemas
-from ..database.database import get_db
-from ..login.login import get_current_user
+from app.utils.auth_jwt import *
+from app.models import models as models
+from app.schemas import schemas as schemas
+from app.config.database.database import get_db
+from app.api.login.login import get_current_user
 
 router = APIRouter(
     prefix="/permission",

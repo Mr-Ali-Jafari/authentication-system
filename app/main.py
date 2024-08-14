@@ -1,12 +1,12 @@
 from fastapi import FastAPI
+from app.api.login import login
+from app.models.models import Base
+from app.api.user import user
+from app.api.role import role
+from app.config.database import database
+from app.api.permission import permission
 
-from .login import login
-from .models.models import Base
-from .user import user
-from .role import role
-from .database import database
-from .permission import permission
-# Start App
+
 Base.metadata.create_all(bind=database.engine)
 
 
