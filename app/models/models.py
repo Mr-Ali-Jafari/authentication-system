@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, ForeignKey,DateTime, Table
 from sqlalchemy.orm import relationship, declarative_base
+from datetime import datetime
 
 Base = declarative_base()
 
@@ -16,6 +17,19 @@ role_permissions = Table(
     Column('permission_id', Integer, ForeignKey('permissions.id'))
 )
 
+
+class FailedLoginAttempt(Base):
+    __tablename__ = "failed_login_attempts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    attempts = Column(Integer, default=0)
+    block_until = Column(DateTime, nullable=True)
+    user = relationship("User", back_populates="failed_login_attempts")
+
+
+
+
 class User(Base):
     __tablename__ = 'users'
 
@@ -23,7 +37,7 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    
+    failed_login_attempts = relationship("FailedLoginAttempt", back_populates="user", uselist=False)
     roles = relationship("Role", secondary=user_roles, back_populates="users")
 
 class Role(Base):
