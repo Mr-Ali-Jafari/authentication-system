@@ -23,7 +23,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db), current
 
 @router.get("/users/", response_model=List[schemas.User])
 def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
-    if any(role.name != 'is_superuser' for role in current_user.roles):
+    if any(role.name != 'superuser' for role in current_user.roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='Access denied: You do not have permission to view users'
@@ -32,7 +32,7 @@ def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db), cu
 
 @router.get("/users/{user_id}", response_model=schemas.User)
 def read_user(user_id: int, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
-    if any(role.name != 'is_superuser' for role in current_user.roles):
+    if any(role.name != 'superuser' for role in current_user.roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='Access denied: You do not have permission to view users'
@@ -41,7 +41,7 @@ def read_user(user_id: int, db: Session = Depends(get_db), current_user: schemas
 
 @router.put("/users/{user_id}", response_model=schemas.User)
 def update_user(user_id: int, user: schemas.UserCreate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
-    if any(role.name != 'is_superuser' for role in current_user.roles):
+    if any(role.name != 'superuser' for role in current_user.roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='Access denied: You do not have permission to view users'

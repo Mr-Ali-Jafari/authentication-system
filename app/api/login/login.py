@@ -7,13 +7,17 @@ from app.services.login.login_service import (
     login_for_access_token_service,
     get_current_user_service,
 )
-
 router = APIRouter(
     prefix="/login",
     tags=['Login']
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login/token")
 
 @router.post("/token", response_model=schemas.Token)
 def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
