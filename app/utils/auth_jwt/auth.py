@@ -2,6 +2,8 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
+from sqlalchemy.orm import Session
+from app.models.models import User,Role,Permission
 
 SECRET_KEY = "01e2wdlsalnflsjoi20erwosak0aemfmvdxnzeaosfja"
 ALGORITHM = "HS256"
@@ -38,3 +40,50 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         return payload
     except JWTError:
         return None
+
+
+def add_user_with_role_and_permission(db: Session, username: str, email: str, password: str, role_name: str, permission_name: str):
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        hashed_password = pwd_context.hash(password)
+        user = User(username=username, email=email, hashed_password=hashed_password)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        print(f"User '{username}' created.")
+    else:
+        print(f"User '{username}' already exists.")
+    
+    role = db.query(Role).filter(Role.name == role_name).first()
+    if not role:
+        role = Role(name=role_name)
+        db.add(role)
+        db.commit()
+        db.refresh(role)
+        print(f"Role '{role_name}' created.")
+    else:
+        print(f"Role '{role_name}' already exists.")
+    
+    permission = db.query(Permission).filter(Permission.name == permission_name).first()
+    if not permission:
+        permission = Permission(name=permission_name)
+        db.add(permission)
+        db.commit()
+        db.refresh(permission)
+        print(f"Permission '{permission_name}' created.")
+    else:
+        print(f"Permission '{permission_name}' already exists.")
+    
+    if role not in user.roles:
+        user.roles.append(role)
+        print(f"Role '{role_name}' added to user '{username}'.")
+    
+    if permission not in role.permissions:
+        role.permissions.append(permission)
+        print(f"Permission '{permission_name}' added to role '{role_name}'.")
+    
+    db.commit()
+    db.refresh(user)
+    db.refresh(role)
+    
+    print(f"User '{username}' updated with role '{role_name}' and permission '{permission_name}'")
