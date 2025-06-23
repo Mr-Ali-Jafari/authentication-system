@@ -1,81 +1,58 @@
+from fastapi import Depends, HTTPException, status
+from app.models.pydantic import ResponseUser
+from app.models.base import Users
 from sqlalchemy.orm import Session
-from app.models import models as models
-from app.utils.auth_jwt.auth import *
-from fastapi import HTTPException, status
-from datetime import timedelta
-import logging
+from app.tools import jwt
+import dotenv, os, datetime
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 30 
+dotenv.load_dotenv(dotenv_path='../../app/')
 
-def authenticate_user_service(db: Session, username: str, password: str):
-    user = db.query(models.User).filter(models.User.username == username).first()
-    if not user or not verify_password(password, user.hashed_password):
-        return None
+def auth_user(db: Session, username: str, password: str):
+    user = db.query(Users).filter(Users.username == username).first()
+    if not user or not jwt.verify_password(password, user.password):
+        return {
+            'status': status.HTTP_401_UNAUTHORIZED,
+            'message': 'رمز یا نام کاربری اشتباه وارد شده است'
+        }
     return user
 
-def login_for_access_token_service(db: Session, form_data):
-    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+def login_service(db: Session, schema: ResponseUser):
+    is_authenticated = auth_user(db=db, username=schema.username, password=schema.password)
+    
 
-    if user:
-        failed_attempt = db.query(models.FailedLoginAttempt).filter(models.FailedLoginAttempt.user_id == user.id).first()
+    if isinstance(is_authenticated, dict):
+        return is_authenticated
+    
+    token_expire = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30)) 
+    
 
-        if failed_attempt and failed_attempt.block_until:
-            current_time = datetime.utcnow()
-            if current_time < failed_attempt.block_until:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"You are blocked until {failed_attempt.block_until}.",
-                )
-
-    authenticated_user = authenticate_user_service(db, form_data.username, form_data.password)
-
-    if not authenticated_user:
-        if user:
-            if failed_attempt:
-                failed_attempt.attempts += 1
-            else:
-                failed_attempt = models.FailedLoginAttempt(user_id=user.id, attempts=1)
-                db.add(failed_attempt)
-
-            # بلاک کردن کاربر بر اساس تعداد تلاش‌ها
-            if failed_attempt.attempts >= 3 and failed_attempt.attempts < 6:
-                failed_attempt.block_until = datetime.utcnow() + timedelta(minutes=5)
-            elif failed_attempt.attempts >= 6:
-                failed_attempt.block_until = datetime.utcnow() + timedelta(minutes=10)
-
-            db.commit()
-
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if failed_attempt:
-        failed_attempt.attempts = 0
-        failed_attempt.block_until = None
-        db.commit()
-
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": authenticated_user.username}, expires_delta=access_token_expires
+    access_token = jwt.create_access_token(
+        data={'sub': is_authenticated.username}, 
+        expires_delta=datetime.timedelta(minutes=token_expire)
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    return {
+        'status': status.HTTP_200_OK,
+        'token': access_token,  
+        'token_type': 'bearer'  
+    }
 
 
-def get_current_user_service(db: Session, token: str):
-    payload = decode_access_token(token)
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    user = db.query(models.User).filter(models.User.username == payload.get("sub")).first()
+def get_current_user_service(db:Session,token:str):
+    current_user = jwt.decode_access_token(token=token)
+
+    if current_user is None:
+        return {
+            'status':status.HTTP_401_UNAUTHORIZED,
+            'message':'ورود غیرمجاز',
+        }
+    
+    user = db.query(Users).filter(Users.username == current_user.get("sub")).first()
+
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        return {
+            'status':status.HTTP_401_UNAUTHORIZED,
+            'message':'ورود غیرمجاز',
+        }
+    
     return user
